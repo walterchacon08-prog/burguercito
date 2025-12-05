@@ -18,6 +18,9 @@ import {
   ShieldAlert,
   CheckCircle2,
   KeyRound,
+  LogOut,
+  Image as ImageIcon,
+  Camera,
 } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import {
@@ -37,8 +40,6 @@ import {
 } from "firebase/firestore";
 
 // --- CONFIGURACIÓN GENERAL ---
-// 1. TU NÚMERO DE WHATSAPP (IMPORTANTE: Ponlo con el código de país, sin el '+')
-// Ejemplo Colombia: 57 + Número (3001234567) = 573001234567
 const NUMERO_WHATSAPP = "573144709786";
 
 // 2. CONFIGURACIÓN DE TU BASE DE DATOS REAL (FIREBASE)
@@ -51,7 +52,7 @@ const YOUR_FIREBASE_CONFIG = {
   appId: "1:1072944343304:web:a6a6781f0c2f16e29fa4bd",
 };
 
-// --- DATOS INICIALES (SOLO PARA DEMO) ---
+// --- DATOS INICIALES ---
 const INITIAL_MENU_ITEMS = [
   {
     id: "1",
@@ -72,37 +73,9 @@ const INITIAL_MENU_ITEMS = [
     image:
       "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=500&auto=format&fit=crop&q=60",
   },
-  {
-    id: "3",
-    name: "Pollo Crispy",
-    description:
-      "Pechuga de pollo apanada, mayonesa de ajo, pepinillos y queso suizo.",
-    price: 20000,
-    category: "Hamburguesas",
-    image:
-      "https://images.unsplash.com/photo-1619250907584-6997e597c251?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "4",
-    name: "Papas Rústicas",
-    description: "Papas fritas con cáscara, sal marina y romero.",
-    price: 8000,
-    category: "Acompañamientos",
-    image:
-      "https://images.unsplash.com/photo-1585109649139-3668018951a7?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "5",
-    name: "Gaseosa 400ml",
-    description: "Coca-Cola, Sprite o Fanta.",
-    price: 5000,
-    category: "Bebidas",
-    image:
-      "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&auto=format&fit=crop&q=60",
-  },
 ];
 
-// --- GESTIÓN DE BASE DE DATOS (INTELIGENTE) ---
+// --- GESTIÓN DE BASE DE DATOS ---
 let db = null;
 let auth = null;
 let useFirebase = false;
@@ -132,7 +105,7 @@ try {
     );
   }
 } catch (e) {
-  // console.log("Modo Offline/Local activo por error de inicialización");
+  // Error silencioso
 }
 
 export default function App() {
@@ -148,7 +121,7 @@ export default function App() {
   const [view, setView] = useState("menu");
   const [activeCategory, setActiveCategory] = useState("Todas");
 
-  // Estados Admin y Error
+  // Estados Admin
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({
@@ -161,20 +134,18 @@ export default function App() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [authError, setAuthError] = useState(null);
 
-  // --- NUEVOS ESTADOS DE SEGURIDAD ---
+  // Estados Seguridad
   const [showLogin, setShowLogin] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
-  const ADMIN_PASSWORD = "1234"; // ¡CAMBIA ESTO POR TU CLAVE SECRETA!
+  const ADMIN_PASSWORD = "1234";
 
-  // --- 1. CARGA DE DATOS ---
+  // --- CARGA DE DATOS ---
   useEffect(() => {
-    // Estilos
     const script = document.createElement("script");
     script.src = "https://cdn.tailwindcss.com";
     script.async = true;
     document.head.appendChild(script);
 
-    // Lógica de Auth
     const initApp = async () => {
       if (useFirebase && auth) {
         try {
@@ -196,7 +167,6 @@ export default function App() {
           } else {
             setAuthError(error.code);
           }
-
           setUser({ uid: "local-user" });
           loadLocalData();
           return;
@@ -216,7 +186,6 @@ export default function App() {
                   setMenuItems(items);
                 },
                 (err) => {
-                  console.error("Error leyendo DB (Permisos):", err);
                   loadLocalData();
                 }
               );
@@ -231,41 +200,34 @@ export default function App() {
         loadLocalData();
       }
     };
-
     initApp();
   }, []);
 
   const loadLocalData = () => {
     const savedMenu = localStorage.getItem("burger_menu_items");
-    if (savedMenu) {
-      setMenuItems(JSON.parse(savedMenu));
-    } else {
-      setMenuItems([]);
-    }
+    if (savedMenu) setMenuItems(JSON.parse(savedMenu));
+    else setMenuItems([]);
   };
 
-  // --- 2. HELPERS DE BASE DE DATOS ---
+  // --- HELPERS DB ---
   const saveDataLocal = (items) => {
     setMenuItems(items);
     localStorage.setItem("burger_menu_items", JSON.stringify(items));
   };
 
-  const isFirebaseReady = () => {
-    return (
-      useFirebase &&
-      user &&
-      user.uid !== "local-user" &&
-      collectionRef &&
-      !authError
-    );
-  };
+  const isFirebaseReady = () =>
+    useFirebase &&
+    user &&
+    user.uid !== "local-user" &&
+    collectionRef &&
+    !authError;
 
   const dbAdd = async (item) => {
     if (isFirebaseReady()) {
       try {
         await addDoc(collectionRef, item);
       } catch (e) {
-        alert("Error guardando en la nube. Verifica permisos.");
+        alert("Error guardando.");
       }
     } else {
       const newItem = { ...item, id: Date.now().toString() };
@@ -275,22 +237,18 @@ export default function App() {
 
   const dbUpdate = async (item) => {
     if (isFirebaseReady()) {
-      let itemRef;
-      if (YOUR_FIREBASE_CONFIG.apiKey.length > 0) {
-        itemRef = doc(db, "menu", item.id);
-      } else {
-        const appId =
-          typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-        itemRef = doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "menu_items",
-          item.id
-        );
-      }
+      let itemRef =
+        YOUR_FIREBASE_CONFIG.apiKey.length > 0
+          ? doc(db, "menu", item.id)
+          : doc(
+              db,
+              "artifacts",
+              typeof __app_id !== "undefined" ? __app_id : "default-app-id",
+              "public",
+              "data",
+              "menu_items",
+              item.id
+            );
       await updateDoc(itemRef, {
         name: item.name,
         price: Number(item.price),
@@ -306,22 +264,18 @@ export default function App() {
 
   const dbDelete = async (id) => {
     if (isFirebaseReady()) {
-      let itemRef;
-      if (YOUR_FIREBASE_CONFIG.apiKey.length > 0) {
-        itemRef = doc(db, "menu", id);
-      } else {
-        const appId =
-          typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-        itemRef = doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "menu_items",
-          id
-        );
-      }
+      let itemRef =
+        YOUR_FIREBASE_CONFIG.apiKey.length > 0
+          ? doc(db, "menu", id)
+          : doc(
+              db,
+              "artifacts",
+              typeof __app_id !== "undefined" ? __app_id : "default-app-id",
+              "public",
+              "data",
+              "menu_items",
+              id
+            );
       await deleteDoc(itemRef);
     } else {
       const filtered = menuItems.filter((i) => i.id !== id);
@@ -340,21 +294,39 @@ export default function App() {
     }
   };
 
-  // --- 3. LÓGICA UI Y LOGIN ---
+  // --- MANEJO DE IMÁGENES (NUEVO) ---
+  const handleImageSelect = (e, isEdit = false) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validar tamaño (Máximo 800KB para evitar errores de Firestore)
+      if (file.size > 800 * 1024) {
+        alert(
+          "⚠️ La imagen es muy pesada. Por favor usa una más pequeña o una URL."
+        );
+        return;
+      }
 
-  // Función para intentar entrar al modo admin
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (isEdit) {
+          setEditingItem({ ...editingItem, image: reader.result });
+        } else {
+          setNewItem({ ...newItem, image: reader.result });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- UI Y LOGIN ---
   const handleAdminToggle = () => {
-    if (isAdminMode) {
-      // Si ya es admin, salir directo
-      setIsAdminMode(false);
-    } else {
-      // Si no es admin, pedir contraseña
+    if (isAdminMode) setIsAdminMode(false);
+    else {
       setShowLogin(true);
       setLoginPassword("");
     }
   };
 
-  // Función para verificar contraseña
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     if (loginPassword === ADMIN_PASSWORD) {
@@ -391,9 +363,7 @@ export default function App() {
   };
 
   const handleDeleteItem = async (id) => {
-    if (confirm("¿Estás seguro de borrar este producto?")) {
-      await dbDelete(id);
-    }
+    if (confirm("¿Borrar producto?")) await dbDelete(id);
   };
 
   const categories = [
@@ -451,13 +421,10 @@ export default function App() {
     message += `\n*TOTAL: ${formatPrice(total)}*\n`;
     message += `\n📍 Dirección: ${customerInfo.address}`;
     message += `\n📱 Teléfono: ${customerInfo.phone}`;
-
-    // USAMOS EL NÚMERO CONFIGURADO AL PRINCIPIO
     window.open(
       `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(message)}`,
       "_blank"
     );
-
     setCart([]);
     setView("success");
     setIsCartOpen(false);
@@ -465,32 +432,27 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
-      {/* MODAL DE LOGIN (NUEVO) */}
+      {/* MODAL LOGIN */}
       {showLogin && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
             <button
               onClick={() => setShowLogin(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-4 right-4 text-gray-400"
             >
               <X size={24} />
             </button>
-
             <div className="flex flex-col items-center mb-6">
               <div className="bg-red-100 p-3 rounded-full mb-3 text-red-600">
                 <KeyRound size={32} />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Acceso Dueño</h3>
-              <p className="text-sm text-gray-500 text-center">
-                Ingresa el código secreto para editar el menú.
-              </p>
             </div>
-
             <form onSubmit={handleLoginSubmit}>
               <input
-                type="password" // Oculta el texto
-                inputMode="numeric" // Teclado numérico en celular
-                className="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-3xl tracking-[1em] mb-6 focus:border-red-500 outline-none font-bold text-gray-700 placeholder-gray-300"
+                type="password"
+                inputMode="numeric"
+                className="w-full border-2 border-gray-200 rounded-xl p-4 text-center text-3xl tracking-[1em] mb-6 outline-none font-bold"
                 placeholder="••••"
                 autoFocus
                 value={loginPassword}
@@ -498,7 +460,7 @@ export default function App() {
               />
               <button
                 type="submit"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg"
               >
                 Entrar
               </button>
@@ -507,7 +469,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Navbar */}
+      {/* NAVBAR */}
       <nav
         className={`sticky top-0 z-40 text-white shadow-lg transition-colors ${
           isAdminMode ? "bg-gray-800" : "bg-red-700"
@@ -531,27 +493,32 @@ export default function App() {
               </h1>
               <p
                 className={`text-xs ${
-                  isAdminMode ? "text-gray-400" : "text-red-200"
+                  isAdminMode ? "text-green-400 font-bold" : "text-red-200"
                 }`}
               >
-                {isAdminMode ? "Editando Menú" : "Delivery Express"}
+                {isAdminMode ? "● EDICIÓN ACTIVA" : "Delivery Express"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* BOTÓN CANDADO MODIFICADO */}
             <button
               onClick={handleAdminToggle}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${
                 isAdminMode
-                  ? "bg-green-500 text-white"
+                  ? "bg-green-500 text-white shadow-lg ring-2 ring-green-300"
                   : "hover:bg-red-800 text-red-100"
               }`}
-              title={
-                isAdminMode ? "Salir del modo dueño" : "Entrar al modo dueño"
-              }
             >
-              {isAdminMode ? <CheckCircle2 size={20} /> : <Lock size={20} />}
+              {isAdminMode ? (
+                <>
+                  <span className="text-xs font-bold hidden sm:inline">
+                    SALIR
+                  </span>
+                  <LogOut size={20} />
+                </>
+              ) : (
+                <Lock size={20} />
+              )}
             </button>
             {!isAdminMode && (
               <button
@@ -570,9 +537,8 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* MAIN */}
       <main className="max-w-4xl mx-auto p-4 pb-20">
-        {/* --- GLOBAL ERROR BANNER FOR SETUP --- */}
         {authError === "needs_setup" && (
           <div className="bg-red-600 text-white p-4 mb-6 rounded-lg shadow-lg flex items-start gap-3 animate-bounce-slow">
             <ShieldAlert className="shrink-0 mt-1" size={24} />
@@ -580,87 +546,27 @@ export default function App() {
               <h3 className="font-bold text-lg">
                 ⚠️ Falta activar Firebase Auth
               </h3>
-              <p className="text-red-100 text-sm mb-2">
-                La conexión funciona, pero olvidaste encender el interruptor de
-                "Autenticación" en la consola.
-              </p>
               {!isAdminMode && (
                 <button
                   onClick={() => setIsAdminMode(true)}
                   className="underline font-bold text-white hover:text-red-200 text-sm"
                 >
-                  Ver cómo solucionarlo en Modo Dueño
+                  Ver solución
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* --- INSTRUCCIONES DE SOLUCIÓN EN MODO ADMIN --- */}
         {authError === "needs_setup" && isAdminMode && (
-          <div className="bg-white border-l-4 border-red-500 p-6 mb-6 rounded shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Lock size={100} />
-            </div>
+          <div className="bg-white border-l-4 border-red-500 p-6 mb-6 rounded shadow-xl">
             <h3 className="font-bold text-red-800 text-xl mb-4">
-              Cómo arreglar el error "Auth Configuration":
+              Activa el acceso Anónimo en Firebase Authentication.
             </h3>
-            <ol className="list-decimal ml-5 space-y-3 text-gray-700 font-medium">
-              <li>
-                Ve a tu{" "}
-                <a
-                  href="https://console.firebase.google.com/"
-                  target="_blank"
-                  className="text-blue-600 underline"
-                >
-                  Consola de Firebase
-                </a>
-                .
-              </li>
-              <li>
-                En el menú izquierdo, haz clic en{" "}
-                <strong>Compilación (Build)</strong> →{" "}
-                <strong>Authentication</strong>.
-              </li>
-              <li>
-                Haz clic en el botón <strong>Comenzar (Get Started)</strong>.
-              </li>
-              <li>
-                Ve a la pestaña <strong>Sign-in method</strong> (Método de
-                inicio de sesión).
-              </li>
-              <li>
-                Haz clic en <strong>Anónimo</strong>, activa el interruptor de{" "}
-                <strong>Habilitar</strong> y guarda.
-              </li>
-            </ol>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-500">
-                Una vez hagas esto, recarga esta página y el error desaparecerá.
-              </p>
-            </div>
           </div>
         )}
 
-        {/* Aviso de Modo Local Genérico */}
-        {(!useFirebase || (authError && authError !== "needs_setup")) &&
-          isAdminMode && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded shadow-sm flex gap-3 items-start">
-              <AlertTriangle className="text-yellow-600 shrink-0" />
-              <div>
-                <p className="font-bold text-yellow-800 text-sm">
-                  Modo de Prueba Local
-                </p>
-                <p className="text-yellow-700 text-xs">
-                  Actualmente los cambios{" "}
-                  <strong>solo se guardan en este dispositivo</strong>. Revisa
-                  tu configuración de llaves o permisos.
-                </p>
-              </div>
-            </div>
-          )}
-
-        {/* ADMIN: AGREGAR */}
+        {/* ADMIN: AGREGAR (CON SELECCIÓN DE FOTO) */}
         {isAdminMode && !authError && (
           <div className="mb-8 animate-fade-in">
             {!isAddingNew ? (
@@ -676,7 +582,7 @@ export default function App() {
                     onClick={seedDatabase}
                     className="bg-blue-600 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-md hover:bg-blue-700"
                   >
-                    <UploadCloud size={20} /> Cargar Menú Demo
+                    <UploadCloud size={20} />
                   </button>
                 )}
               </div>
@@ -716,6 +622,59 @@ export default function App() {
                     setNewItem({ ...newItem, description: e.target.value })
                   }
                 />
+
+                {/* SELECCIÓN DE IMAGEN MEJORADA */}
+                <div className="space-y-2 border p-3 rounded-lg bg-gray-50">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
+                      <ImageIcon size={16} /> Foto del Producto
+                    </label>
+                    <span className="text-xs text-gray-400">Max 1MB</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    {/* Botón Galería */}
+                    <label className="flex-1 cursor-pointer bg-white border border-gray-300 hover:border-green-500 text-gray-600 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
+                      <Camera size={18} />
+                      <span className="text-sm font-medium">Subir Foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageSelect(e, false)}
+                      />
+                    </label>
+
+                    {/* Input URL (Respaldo) */}
+                    <input
+                      placeholder="O pega una URL..."
+                      className="flex-[2] border p-2 rounded text-sm"
+                      value={newItem.image}
+                      onChange={(e) =>
+                        setNewItem({ ...newItem, image: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  {/* Previsualización */}
+                  {newItem.image && (
+                    <div className="w-full h-32 bg-gray-200 rounded-lg overflow-hidden relative">
+                      <img
+                        src={newItem.image}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewItem({ ...newItem, image: "" })}
+                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <select
                     className="border p-2 rounded"
@@ -728,14 +687,6 @@ export default function App() {
                     <option>Acompañamientos</option>
                     <option>Bebidas</option>
                   </select>
-                  <input
-                    placeholder="URL Imagen"
-                    className="border p-2 rounded"
-                    value={newItem.image}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, image: e.target.value })
-                    }
-                  />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -757,7 +708,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ÉXITO */}
+        {/* MENÚ */}
         {view === "success" ? (
           <div className="text-center py-20 animate-fade-in">
             <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -786,14 +737,10 @@ export default function App() {
                   <h2 className="text-3xl md:text-5xl font-bold text-white mb-2 drop-shadow-md">
                     ¿Hambre voraz? 🦁
                   </h2>
-                  <p className="text-gray-100 text-lg drop-shadow-md max-w-md">
-                    Las mejores hamburguesas de la ciudad.
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* FILTROS */}
             <div className="flex overflow-x-auto gap-3 pb-4 mb-6 scrollbar-hide">
               {categories.map((cat) => (
                 <button
@@ -810,19 +757,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* LISTA VACÍA */}
-            {menuItems.length === 0 && (
-              <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
-                <p className="text-gray-500">No hay productos en el menú.</p>
-                {isAdminMode && !authError && (
-                  <p className="text-sm text-blue-600 mt-2">
-                    ¡Usa el botón "Cargar Menú Demo" o agrega uno nuevo!
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* GRID PRODUCTOS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredItems.map((item) => (
                 <div
@@ -870,6 +804,23 @@ export default function App() {
                         }
                         placeholder="Descripción"
                       ></textarea>
+
+                      {/* EDICIÓN DE FOTO MEJORADA */}
+                      <div className="flex gap-2 items-center">
+                        <img
+                          src={editingItem.image}
+                          className="w-10 h-10 rounded object-cover border"
+                        />
+                        <label className="flex-1 cursor-pointer bg-white border border-gray-300 text-xs text-gray-600 py-2 rounded flex items-center justify-center gap-1 hover:bg-gray-50">
+                          <Camera size={14} /> Cambiar Foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleImageSelect(e, true)}
+                          />
+                        </label>
+                      </div>
                       <input
                         className="w-full border p-2 rounded text-xs"
                         value={editingItem.image}
@@ -881,6 +832,7 @@ export default function App() {
                         }
                         placeholder="URL Imagen"
                       />
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingItem(null)}
@@ -905,16 +857,16 @@ export default function App() {
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         {isAdminMode ? (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex flex-col gap-2 z-20">
                             <button
                               onClick={() => setEditingItem(item)}
-                              className="bg-white text-blue-600 p-2 rounded-full shadow hover:scale-110"
+                              className="bg-white text-blue-600 p-2 rounded-full shadow-lg border border-gray-200 hover:scale-110 transition-transform"
                             >
                               <Edit2 size={20} />
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              className="bg-white text-red-600 p-2 rounded-full shadow hover:scale-110"
+                              className="bg-white text-red-600 p-2 rounded-full shadow-lg border border-gray-200 hover:scale-110 transition-transform"
                             >
                               <Trash2 size={20} />
                             </button>
@@ -959,7 +911,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Slide-over Cart */}
+      {/* CARRITO */}
       {isCartOpen && !isAdminMode && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div
