@@ -61,7 +61,7 @@ const NUMERO_WHATSAPP = "573144709786";
 const ENLACE_TIKTOK = "https://www.tiktok.com/@fundidos.par";
 const apiKey = "";
 
-// --- CONFIGURACIÓN FIREBASE ---
+// --- CONFIGURACIÓN FIREBASE (Tus llaves reales) ---
 const YOUR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyCK1M_aGt2RoJm-QdAHNHIX9X_t3lQIfds",
   authDomain: "burguerapp-b6cc1.firebaseapp.com",
@@ -71,7 +71,7 @@ const YOUR_FIREBASE_CONFIG = {
   appId: "1:1072944343304:web:a6a6781f0c2f16e29fa4bd",
 };
 
-// --- LISTA MAESTRA DE CATEGORÍAS ---
+// --- LISTAS MAESTRAS ---
 const CATEGORIES_LIST = [
   "Hamburguesas",
   "Hamburguesas Solas (sin papas)",
@@ -87,7 +87,6 @@ const CATEGORIES_LIST = [
   "Promo en Divisa",
 ];
 
-// --- ETIQUETAS ---
 const BADGES_LIST = [
   { label: "Sin etiqueta", value: "" },
   { label: "🔥 Más Vendido", value: "best_seller", color: "bg-orange-500" },
@@ -97,7 +96,6 @@ const BADGES_LIST = [
   { label: "📉 Oferta", value: "sale", color: "bg-green-600" },
 ];
 
-// --- DATOS INICIALES (ACTUALIZADOS PARA PROBAR NUEVAS SECCIONES) ---
 const INITIAL_MENU_ITEMS = [
   {
     id: "1",
@@ -120,41 +118,9 @@ const INITIAL_MENU_ITEMS = [
       "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=500&auto=format&fit=crop&q=60",
     badge: "premium",
   },
-  {
-    id: "3",
-    name: "Perro Caliente Especial",
-    description:
-      "Salchicha americana, queso fundido, papitas y salsas de la casa.",
-    price: 15000,
-    category: "Perros Calientes",
-    image:
-      "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=500&auto=format&fit=crop&q=60",
-    badge: "new",
-  },
-  {
-    id: "4",
-    name: "Ensalada César",
-    description: "Lechuga fresca, crotones, parmesano y aderezo césar.",
-    price: 12000,
-    category: "Ensaladas",
-    image:
-      "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=500&auto=format&fit=crop&q=60",
-    badge: "",
-  },
-  {
-    id: "5",
-    name: "Brownie con Helado",
-    description:
-      "Delicioso brownie caliente con una bola de helado de vainilla.",
-    price: 8000,
-    category: "Postres",
-    image:
-      "https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=500&auto=format&fit=crop&q=60",
-    badge: "",
-  },
 ];
 
-// --- GESTIÓN DB ---
+// --- INICIALIZACIÓN DB ---
 let db = null;
 let auth = null;
 let useFirebase = false;
@@ -171,44 +137,13 @@ try {
     collectionRef = collection(db, "menu");
     settingsRef = doc(db, "config", "store_settings");
     couponsRef = collection(db, "coupons");
-  } else if (typeof __firebase_config !== "undefined") {
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    const appId = typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-    useFirebase = true;
-    collectionRef = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "menu_items"
-    );
-    settingsRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "store_settings",
-      "config"
-    );
-    couponsRef = collection(
-      db,
-      "artifacts",
-      appId,
-      "public",
-      "data",
-      "coupons"
-    );
   }
 } catch (e) {
   console.log("Modo local activo");
 }
 
 export default function App() {
+  // --- ESTADOS ---
   const [user, setUser] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [cart, setCart] = useState([]);
@@ -219,11 +154,9 @@ export default function App() {
     phone: "",
   });
 
-  // View State
   const [view, setView] = useState("landing");
   const [activeCategory, setActiveCategory] = useState("Todas");
 
-  // Admin & Auth State
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [newItem, setNewItem] = useState({
@@ -239,36 +172,28 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  // Cupones
   const [showCouponsModal, setShowCouponsModal] = useState(false);
   const [couponsList, setCouponsList] = useState([]);
   const [newCoupon, setNewCoupon] = useState({ code: "", discount: 10 });
 
-  // Security
   const [showLogin, setShowLogin] = useState(false);
   const [loginPassword, setLoginPassword] = useState("");
   const ADMIN_PASSWORD = "1234";
 
-  // Product Modal State
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [productNote, setProductNote] = useState("");
   const [fundiOptions, setFundiOptions] = useState({ proteina: "", salsa: "" });
-
-  // Estado para Extras seleccionados en el modal
   const [selectedExtras, setSelectedExtras] = useState([]);
 
-  // Order State
   const [orderType, setOrderType] = useState("delivery");
   const [paymentMethod, setPaymentMethod] = useState("Efectivo");
   const [cartStep, setCartStep] = useState("list");
 
-  // Cupones Carrito
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState({ type: "", text: "" });
 
-  // AI & Search & Store State
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResponse, setAiResponse] = useState("");
@@ -280,41 +205,79 @@ export default function App() {
 
   const [showUpsellModal, setShowUpsellModal] = useState(false);
 
-  // --- 1. CARGA INICIAL Y EFECTOS ---
+  // --- VARIABLES DERIVADAS (Definidas antes del render para evitar errores) ---
+  const categories = [
+    "Todas",
+    ...new Set(
+      menuItems.map((item) => String(item.category || "Sin Categoría"))
+    ),
+  ];
+
+  const filteredItems = menuItems.filter((item) => {
+    const matchesCategory =
+      activeCategory === "Todas" || item.category === activeCategory;
+    const query = searchQuery.toLowerCase();
+    const itemName = String(item.name || "").toLowerCase();
+    const itemDesc = String(item.description || "").toLowerCase();
+    const matchesSearch = itemName.includes(query) || itemDesc.includes(query);
+    return matchesCategory && matchesSearch;
+  });
+
+  const sideItems = menuItems.filter((i) => i.category === "Acompañamientos");
+  const drinkItems = menuItems.filter((i) => i.category === "Bebidas");
+  const saladItems = menuItems.filter((i) => i.category === "Ensaladas");
+  const dessertItems = menuItems.filter((i) => i.category === "Postres");
+  const hotdogItems = menuItems.filter(
+    (i) => i.category === "Perros Calientes"
+  );
+
+  const extrasTotal = selectedExtras.reduce(
+    (sum, e) => sum + Number(e.price || 0),
+    0
+  );
+  const currentModalTotal =
+    (selectedProduct ? Number(selectedProduct.price || 0) * quantity : 0) +
+    extrasTotal;
+
+  const subTotal = cart.reduce(
+    (sum, item) => sum + Number(item.price || 0) * item.quantity,
+    0
+  );
+  const discountAmount = appliedCoupon
+    ? (subTotal * appliedCoupon.discount) / 100
+    : 0;
+  const total = subTotal - discountAmount;
+  const totalQty = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const formatPrice = (price) =>
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
+      minimumFractionDigits: 0,
+    }).format(price);
+
+  // --- EFECTOS ---
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://cdn.tailwindcss.com";
     script.async = true;
     document.head.appendChild(script);
 
-    // Reloj de la tienda
+    // Reloj
     const checkSchedule = () => {
       const hour = new Date().getHours();
-      // Aseguramos que open/close sean números para evitar errores de comparación
       const open = Number(storeSchedule?.open || 11);
       const close = Number(storeSchedule?.close || 23);
-
-      if (hour < open || hour >= close) {
-        setIsStoreOpen(false);
-      } else {
-        setIsStoreOpen(true);
-      }
+      setIsStoreOpen(!(hour < open || hour >= close));
     };
     checkSchedule();
     const interval = setInterval(checkSchedule, 60000);
 
+    // Inicializar Firebase
     const initApp = async () => {
       if (useFirebase && auth) {
         try {
-          if (
-            typeof __initial_auth_token !== "undefined" &&
-            __initial_auth_token &&
-            !YOUR_FIREBASE_CONFIG.apiKey
-          ) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
+          await signInAnonymously(auth);
         } catch (error) {
           if (
             error.code === "auth/configuration-not-found" ||
@@ -352,12 +315,7 @@ export default function App() {
               onSnapshot(settingsRef, (doc) => {
                 if (doc.exists()) {
                   const data = doc.data();
-                  // Validación extra para evitar "Objects are not valid"
-                  if (
-                    data &&
-                    typeof data.open === "number" &&
-                    typeof data.close === "number"
-                  ) {
+                  if (data && typeof data.open === "number") {
                     setStoreSchedule(data);
                   }
                 }
@@ -384,7 +342,7 @@ export default function App() {
     };
     initApp();
     return () => clearInterval(interval);
-  }, [storeSchedule.open, storeSchedule.close]); // Dependencias primitivas
+  }, [storeSchedule.open, storeSchedule.close]);
 
   const loadLocalData = () => {
     const savedMenu = localStorage.getItem("burger_menu_items");
@@ -392,101 +350,14 @@ export default function App() {
     else setMenuItems([]);
   };
 
-  // --- 2. LÓGICA DE CATEGORÍAS ---
-  const categories = [
-    "Todas",
-    ...new Set(
-      menuItems.map((item) => String(item.category || "Sin Categoría"))
-    ),
-  ];
-
-  // --- 3. LÓGICA DE FILTRADO ---
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      setActiveCategory("Todas");
-    }
-  }, [searchQuery]);
-
-  const filteredItems = menuItems.filter((item) => {
-    const matchesCategory =
-      activeCategory === "Todas" || item.category === activeCategory;
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      item.name.toLowerCase().includes(query) ||
-      (item.description && item.description.toLowerCase().includes(query));
-    return matchesCategory && matchesSearch;
-  });
-
-  // --- 4. FUNCIONES AUXILIARES ---
-  const askTheChef = async () => {
-    if (!aiQuery.trim()) return;
-    setIsAiLoading(true);
-    setAiResponse("");
-    const menuContext = menuItems
-      .map((i) => `${i.name}: ${i.description} ($${i.price})`)
-      .join("\n");
-    const prompt = `Eres un experto chef de hamburguesas divertido y servicial. Tienes este menú disponible:\n${menuContext}\n\nUn cliente te dice: "${aiQuery}".\n\nRecomienda UNA sola opción del menú que mejor se adapte a lo que pide y explica por qué en máximo 2 frases. Sé entusiasta. Si no sabes qué recomendar, sugiere la "Fundiburguer".`;
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      );
-      const data = await response.json();
-      setAiResponse(
-        data.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Lo siento, me quedé sin ideas. ¡Prueba la Fundiburguer!"
-      );
-    } catch (error) {
-      setAiResponse(
-        "El chef está ocupado en este momento. ¡Pero todo es delicioso!"
-      );
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  const generateDescription = async () => {
-    if (!newItem.name) {
-      alert("Escribe el nombre del producto primero.");
-      return;
-    }
-    setAiGeneratingDesc(true);
-    const prompt = `Escribe una descripción corta, apetitosa y vendedora (máximo 150 caracteres) para un producto de comida rápida llamado "${newItem.name}" de la categoría "${newItem.category}". Usa emojis.`;
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      );
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text) setNewItem((prev) => ({ ...prev, description: text }));
-    } catch (error) {
-      alert("Error conectando con la IA creativa.");
-    } finally {
-      setAiGeneratingDesc(false);
-    }
-  };
-
-  // --- HELPERS VISUALES (NUEVO) ---
+  // --- FUNCIONES Y MANEJADORES ---
   const getCategoryStyle = (catName) => {
     const name = String(catName || "").toLowerCase();
     if (name.includes("hamburguesa"))
       return { bg: "bg-orange-500", text: "text-white", icon: "🍔" };
     if (name.includes("bebida"))
       return { bg: "bg-blue-500", text: "text-white", icon: "🥤" };
-    if (
-      name.includes("papa") ||
-      name.includes("acompañamiento") ||
-      name.includes("extra")
-    )
+    if (name.includes("papa") || name.includes("acompañamiento"))
       return { bg: "bg-yellow-500", text: "text-white", icon: "🍟" };
     if (name.includes("perro"))
       return { bg: "bg-red-600", text: "text-white", icon: "🌭" };
@@ -510,7 +381,61 @@ export default function App() {
     ) : null;
   };
 
-  // --- HELPERS DB ---
+  const askTheChef = async () => {
+    if (!aiQuery.trim()) return;
+    setIsAiLoading(true);
+    setAiResponse("");
+    const menuContext = menuItems
+      .map((i) => `${i.name}: ${i.description} ($${i.price})`)
+      .join("\n");
+    const prompt = `Eres un experto chef de hamburguesas divertido. Menú:\n${menuContext}\n\nCliente: "${aiQuery}".\n\nRecomienda UNA opción.`;
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      const data = await response.json();
+      setAiResponse(
+        data.candidates?.[0]?.content?.parts?.[0]?.text ||
+          "¡Prueba la Fundiburguer!"
+      );
+    } catch (error) {
+      setAiResponse("El chef está ocupado.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const generateDescription = async () => {
+    if (!newItem.name) {
+      alert("Escribe el nombre primero.");
+      return;
+    }
+    setAiGeneratingDesc(true);
+    const prompt = `Descripción corta y apetitosa (max 150 chars) para "${newItem.name}" (${newItem.category}). Usa emojis.`;
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) setNewItem((prev) => ({ ...prev, description: text }));
+    } catch (error) {
+      alert("Error IA.");
+    } finally {
+      setAiGeneratingDesc(false);
+    }
+  };
+
   const saveDataLocal = (items) => {
     setMenuItems(items);
     localStorage.setItem("burger_menu_items", JSON.stringify(items));
@@ -544,12 +469,11 @@ export default function App() {
                   payload.id
                 );
         }
-
         if (action === "add") await addDoc(ref, payload);
         if (action === "update") await updateDoc(ref, payload);
         if (action === "delete") await deleteDoc(ref);
       } catch (e) {
-        alert("Error en base de datos.");
+        alert("Error DB.");
       }
     } else {
       let newItems = [...menuItems];
@@ -567,13 +491,13 @@ export default function App() {
     if (isFirebaseReady() && settingsRef) {
       try {
         await setDoc(settingsRef, storeSchedule);
-        alert("Horario actualizado");
+        alert("Horario guardado");
         setShowSettingsModal(false);
       } catch (e) {
         alert("Error guardando horario");
       }
     } else {
-      alert("No se puede guardar en modo local");
+      alert("Modo local: no se guarda en nube");
     }
   };
 
@@ -591,9 +515,8 @@ export default function App() {
   const handleDeleteCoupon = async (id) => {
     if (isFirebaseReady() && couponsRef) {
       let ref;
-      if (YOUR_FIREBASE_CONFIG.apiKey.length > 0) {
-        ref = doc(db, "coupons", id);
-      } else {
+      if (YOUR_FIREBASE_CONFIG.apiKey.length > 0) ref = doc(db, "coupons", id);
+      else {
         const appId =
           typeof __app_id !== "undefined" ? __app_id : "default-app-id";
         ref = doc(db, "artifacts", appId, "public", "data", "coupons", id);
@@ -609,11 +532,11 @@ export default function App() {
       setAppliedCoupon(found);
       setCouponMessage({
         type: "success",
-        text: `¡Cupón de ${found.discount}% aplicado!`,
+        text: `¡-${found.discount}% aplicado!`,
       });
     } else {
       setAppliedCoupon(null);
-      setCouponMessage({ type: "error", text: "Cupón no válido" });
+      setCouponMessage({ type: "error", text: "Cupón inválido" });
     }
   };
 
@@ -632,7 +555,7 @@ export default function App() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 800 * 1024) {
-        alert("⚠️ Imagen muy pesada. Max 800KB.");
+        alert("Imagen muy pesada (Max 800KB)");
         return;
       }
       const reader = new FileReader();
@@ -689,30 +612,26 @@ export default function App() {
     setQuantity(1);
     setProductNote("");
     setFundiOptions({ proteina: "", salsa: "" });
-    setSelectedExtras([]); // Reset extras
+    setSelectedExtras([]);
   };
-
   const isProductValid = (item) =>
     item.name !== "Fundiburguer" ||
     (fundiOptions.proteina && fundiOptions.salsa);
-
   const toggleExtra = (extraItem) => {
-    if (selectedExtras.find((e) => e.id === extraItem.id)) {
+    if (selectedExtras.find((e) => e.id === extraItem.id))
       setSelectedExtras((prev) => prev.filter((e) => e.id !== extraItem.id));
-    } else {
-      setSelectedExtras((prev) => [...prev, extraItem]);
-    }
+    else setSelectedExtras((prev) => [...prev, extraItem]);
   };
 
   const addAllToCart = () => {
     if (!isProductValid(selectedProduct)) {
-      alert("Selecciona Proteína y Salsa.");
+      alert("Faltan opciones");
       return;
     }
     addToCart(selectedProduct, quantity, productNote);
-    selectedExtras.forEach((extra) => {
-      addToCart(extra, 1, `Extra para ${selectedProduct.name}`);
-    });
+    selectedExtras.forEach((extra) =>
+      addToCart(extra, 1, `Extra para ${selectedProduct.name}`)
+    );
     setSelectedProduct(null);
   };
 
@@ -722,7 +641,6 @@ export default function App() {
       finalNote = `(Proteína: ${fundiOptions.proteina}, Salsa: ${
         fundiOptions.salsa
       }) ${note ? ". " + note : ""}`;
-
     setCart((prev) => {
       if (item.name === "Fundiburguer")
         return [
@@ -768,22 +686,6 @@ export default function App() {
       )
     );
 
-  const subTotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const discountAmount = appliedCoupon
-    ? (subTotal * appliedCoupon.discount) / 100
-    : 0;
-  const total = subTotal - discountAmount;
-  const totalQty = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const formatPrice = (price) =>
-    new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-      minimumFractionDigits: 0,
-    }).format(price);
-
   const sendToWhatsApp = (finalCart) => {
     let typeTitle =
       orderType === "pickup"
@@ -794,11 +696,11 @@ export default function App() {
     let message = `Hola, soy *${customerInfo.name}* y quiero hacer un pedido ${typeTitle}:\n\n`;
     let cartTotal = 0;
     finalCart.forEach((item) => {
-      const itemSub = item.price * item.quantity;
-      cartTotal += itemSub;
-      message += `▪️ ${item.quantity}x ${item.name} - ${formatPrice(
-        itemSub
-      )}\n${item.note ? `   📝 ${item.note}\n` : ""}`;
+      const sub = item.price * item.quantity;
+      cartTotal += sub;
+      message += `▪️ ${item.quantity}x ${item.name} - ${formatPrice(sub)}\n${
+        item.note ? `   📝 ${item.note}\n` : ""
+      }`;
     });
     if (appliedCoupon) {
       message += `\nSubtotal: ${formatPrice(cartTotal)}`;
@@ -836,7 +738,6 @@ export default function App() {
     if (hasUpsellProduct && !hasFriesAlready) setShowUpsellModal(true);
     else sendToWhatsApp(cart);
   };
-
   const handleAcceptUpsell = () => {
     const papasExtra = {
       id: "papas-upsell-" + Date.now(),
@@ -849,21 +750,12 @@ export default function App() {
     setCart(newCart);
     sendToWhatsApp(newCart);
   };
-
   const handleOpenCart = () => {
     setIsCartOpen(true);
     setCartStep("list");
   };
 
-  // --- OBTENER LISTAS DE EXTRAS ---
-  const extrasTotal = selectedExtras.reduce(
-    (sum, e) => sum + Number(e.price || 0),
-    0
-  );
-  const currentModalTotal =
-    (selectedProduct ? Number(selectedProduct.price || 0) * quantity : 0) +
-    extrasTotal;
-
+  // --- RENDERIZADO: LANDING ---
   if (view === "landing") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-red-100 to-white flex flex-col items-center justify-center p-6 animate-fade-in">
@@ -1083,7 +975,7 @@ export default function App() {
               </h4>
               <div className="flex gap-2">
                 <input
-                  placeholder="CÓDIGO (Ej: PROMO)"
+                  placeholder="CÓDIGO"
                   className="flex-1 border p-2 rounded text-sm uppercase"
                   value={newCoupon.code}
                   onChange={(e) =>
@@ -1124,8 +1016,8 @@ export default function App() {
       >
         {!isStoreOpen && !isAdminMode && (
           <div className="bg-gray-900 text-yellow-400 p-1 text-center text-xs font-bold flex items-center justify-center gap-1 border-b border-gray-700">
-            <Clock size={12} /> Cerrado (Abre {storeSchedule.open}:00 -{" "}
-            {storeSchedule.close}:00)
+            <Clock size={12} /> Cerrado (Abre {String(storeSchedule.open)}:00 -{" "}
+            {String(storeSchedule.close)}:00)
           </div>
         )}
 
@@ -1314,7 +1206,6 @@ export default function App() {
                 alt={selectedProduct.name}
                 className="w-full h-full object-cover"
               />
-              {/* BADGE DE CATEGORÍA EN EL MODAL */}
               {(() => {
                 const style = getCategoryStyle(selectedProduct.category);
                 return (
@@ -1325,7 +1216,6 @@ export default function App() {
                   </span>
                 );
               })()}
-              {/* BADGE DE MARKETING */}
               {renderBadge(selectedProduct.badge)}
             </div>
             <div className="p-6 overflow-y-auto">
@@ -1342,8 +1232,13 @@ export default function App() {
               </p>
 
               {!isAdminMode &&
-                selectedProduct.category !== "Acompañamientos" &&
-                selectedProduct.category !== "Bebidas" && (
+                ![
+                  "Acompañamientos",
+                  "Bebidas",
+                  "Postres",
+                  "Ensaladas",
+                  "Perros Calientes",
+                ].includes(selectedProduct.category) && (
                   <div className="space-y-4 mb-4">
                     {sideItems.length > 0 && (
                       <div>
@@ -1393,7 +1288,6 @@ export default function App() {
                         </div>
                       </div>
                     )}
-
                     {drinkItems.length > 0 && (
                       <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-2">
@@ -1442,11 +1336,10 @@ export default function App() {
                         </div>
                       </div>
                     )}
-
                     {hotdogItems.length > 0 && (
                       <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-2">
-                          🌭 ¿Antojo de un Perro Caliente?
+                          🌭 Perros Calientes:
                         </h3>
                         <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
                           {hotdogItems.map((extra) => {
@@ -1491,11 +1384,10 @@ export default function App() {
                         </div>
                       </div>
                     )}
-
                     {saladItems.length > 0 && (
                       <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-2">
-                          🥗 Algo fresco:
+                          🥗 Ensaladas:
                         </h3>
                         <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
                           {saladItems.map((extra) => {
@@ -1540,11 +1432,10 @@ export default function App() {
                         </div>
                       </div>
                     )}
-
                     {dessertItems.length > 0 && (
                       <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-2">
-                          🍰 El toque dulce:
+                          🍰 Postres:
                         </h3>
                         <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
                           {dessertItems.map((extra) => {
@@ -1751,7 +1642,6 @@ export default function App() {
         </div>
       )}
 
-      {/* BARRA FLOTANTE */}
       {cart.length > 0 && view === "menu" && !isCartOpen && (
         <div
           onClick={() => {
@@ -1774,7 +1664,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MAIN CONTENT */}
       <main className="max-w-4xl mx-auto p-4 pb-20">
         {authError === "needs_setup" && (
           <div className="bg-red-600 text-white p-4 mb-6 rounded-lg shadow-lg flex items-start gap-3 animate-bounce-slow">
@@ -1980,7 +1869,6 @@ export default function App() {
           </div>
         )}
 
-        {/* MENÚ */}
         {view === "success" ? (
           <div className="text-center py-20 animate-fade-in">
             <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -2120,8 +2008,6 @@ export default function App() {
                         }
                         placeholder="URL Imagen"
                       />
-
-                      {/* Selector de Categoría en Edición */}
                       <select
                         className="w-full border p-2 rounded text-sm bg-white mb-2"
                         value={editingItem.category}
@@ -2138,7 +2024,6 @@ export default function App() {
                           </option>
                         ))}
                       </select>
-
                       <select
                         className="w-full border p-2 rounded text-sm bg-white"
                         value={editingItem.badge || ""}
